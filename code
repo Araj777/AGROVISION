@@ -1,0 +1,95 @@
+
+#define BLYNK_PRINT Serial
+#define BLYNK_TEMPLATE_ID "TMPL3-EkSgmlc"
+#define BLYNK_TEMPLATE_NAME "smart plant"
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <DHT.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+ 
+char auth[] = "LpageugZY5zN4-QODOk-XN8SCzaBP9Eb";
+char ssid[] = "Nevertheless";
+char pass[] = "5432112345";
+ 
+BlynkTimer timer;
+bool Relay = 0;
+ 
+DHT dht(D7, DHT11);
+#define sensor A0
+#define waterPump D3
+ 
+void setup() {
+  Serial.begin(9600);
+  pinMode(waterPump, OUTPUT);
+  digitalWrite(waterPump, HIGH);
+
+  lcd.backlight();
+  dht.begin();
+ Wire.begin(D2, D1);  
+ lcd.init(); 
+ lcd.backlight();
+  Blynk.begin(auth, ssid, pass, "blynk.cloud", 80);
+ 
+  lcd.setCursor(1, 0);
+  lcd.print("System Loading");
+  for (int a = 0; a <= 15; a++) {
+    lcd.setCursor(a, 1);
+    lcd.print("HEEELLO");
+    delay(500);
+  }
+  lcd.clear();
+ 
+  timer.setInterval(100L, DHT11sensor);
+  timer.setInterval(100L, soilMoistureSensor);
+}
+ 
+//Get the button value
+BLYNK_WRITE(V7) {
+  Relay = param.asInt();
+ 
+  if (Relay == 1) {
+    digitalWrite(waterPump, LOW);
+ 
+  } else {
+    digitalWrite(waterPump, HIGH);
+  }
+}
+ 
+//Get the  soil moisture values
+void soilMoistureSensor() {
+  int value = analogRead(sensor);
+  value = map(value, 0, 1024, 0, 100);
+  value = (value - 100) * -1;
+ 
+  Blynk.virtualWrite(V8, value);
+  lcd.setCursor(0, 0);
+  lcd.print("Moisture :");
+  lcd.print(value);
+  lcd.print(" ");
+}
+ 
+void DHT11sensor() {
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+ 
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+ 
+  lcd.setCursor(0, 1);
+  lcd.print("T:");
+  lcd.print(t);
+ 
+  lcd.setCursor(8, 1);
+  lcd.print("H:");
+  lcd.print(h);
+}
+ 
+void loop() {
+  Blynk.run();  //Run the Blynk library
+  timer.run();  //Run the Blynk timer
+}
